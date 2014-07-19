@@ -120,6 +120,7 @@ public class GAEProxyService extends Service {
   };
   private static final String TAG = "GAEProxyService";
   private static final String DEFAULT_HOST = "74.125.128.106";
+  private static final String VIDEO_HOST = "74.125.0.0|173.194.0.0";
   private static final String DEFAULT_DNS = "220.181.136.37";
   private static final Class<?>[] mStartForegroundSignature = new Class[] {
       int.class, Notification.class
@@ -167,6 +168,7 @@ public class GAEProxyService extends Service {
           ed.putBoolean("isRunning", false);
           break;
         case MSG_HOST_CHANGE:
+          ed.putString("videoHost", videoHost);
           ed.putString("appHost", appHost);
           break;
         case MSG_STOP_SELF:
@@ -188,7 +190,9 @@ public class GAEProxyService extends Service {
   private String appId;
   private String appPath;
   private String appHost = DEFAULT_HOST;
+  private String videoHost = VIDEO_HOST;
   private String[] appMask;
+  private String[] videoMask;
   private int port;
   private String sitekey;
   private SharedPreferences settings = null;
@@ -452,6 +456,11 @@ public class GAEProxyService extends Service {
       }
     }
 
+    videoHost = parseHost("v.maxcdn.info", true);
+    if (videoHost == null || videoHost.equals("") || isInBlackList(videoHost)) {
+        videoHost = settings.getString("videoHost", VIDEO_HOST);
+    }
+
     handler.sendEmptyMessage(MSG_HOST_CHANGE);
 
     dnsHost = parseHost("myhosts.sinaapp.com", false);
@@ -463,6 +472,7 @@ public class GAEProxyService extends Service {
       String[] hosts = dnsHost.split("\\|");
       dnsHost = hosts[hosts.length - 1];
       appMask = appHost.split("\\|");
+      videoMask = videoHost.split("\\|");
     } catch (Exception ex) {
       return false;
     }
@@ -781,6 +791,10 @@ public class GAEProxyService extends Service {
 
     for (String mask : appMask) {
       init_sb.append(cmd_bypass.replace("0.0.0.0", mask));
+    }
+
+    for (String mask : videoMask) {
+      init_sb.append(cmd_bypass.replace("0.0.0.0", mask+"/16 --dport 443"));
     }
 
     init_sb.append(
